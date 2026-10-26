@@ -1,0 +1,56 @@
+version: 2
+
+# Every update, including a major, arrives as a pull request. There is no
+# blanket major-version suppression: a major that this repository cannot take
+# is a review decision with a reason, not a silently dropped notification.
+# Majors are grouped separately from minor and patch so the routine batch stays
+# small and a breaking bump is looked at on its own. Pull requests run the full
+# CI gate (ci.yml runs on pull_request), which is what proves a bump is safe:
+# spec-hash provenance, generator determinism, the reactor test suite, the
+# frozen public API surface, the dependency license allowlist, and the
+# third-party notices.
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      maven-production:
+        dependency-type: production
+        update-types: [minor, patch]
+      maven-development:
+        dependency-type: development
+        update-types: [minor, patch]
+      maven-major:
+        patterns: ['*']
+        update-types: [major]
+    labels: [dependencies]
+
+  - package-ecosystem: npm
+    directory: /tools
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-tools:
+        patterns: ['*']
+        update-types: [minor, patch]
+      npm-tools-major:
+        patterns: ['*']
+        update-types: [major]
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ['*']
+        update-types: [minor, patch]
+      github-actions-major:
+        patterns: ['*']
+        update-types: [major]
+    labels: [dependencies, ci]

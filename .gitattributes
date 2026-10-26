@@ -1,0 +1,24 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Explicitly declare text files
+*.java text
+*.xml text
+*.properties text
+*.json text
+*.yaml text
+*.yml text
+*.md text
+*.mjs text
+*.py text
+*.sh text
+*.toml text
+*.txt text
+*.svg text
+*.cmd text eol=crlf
+*.Dockerfile text
+*.dockerignore text
+.npmrc text
+
+# Generated files
+api-surface.txt linguist-generated=true

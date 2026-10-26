@@ -1,0 +1,10 @@
+target/
+*.class
+*.jar
+!src/
+.DS_Store
+
+# Pinned codegen toolchain (`make regen` reinstalls it from the lockfile)
+tools/node_modules/
+
+CLAUDE.local.md

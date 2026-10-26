@@ -1,0 +1,22 @@
+# Gitleaks configuration for the secret-scan CI gate.
+#
+# Everything allowlisted here is a SHA-256 content digest, not a credential.
+# Both files live under vendor/spec/, which is written exclusively by the spec
+# bot (see .github/workflows/vendor-readonly.yml), so the strings cannot be
+# reworded in this repo.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+# why: vendor/spec/MANIFEST.json carries openapiSha256/specBundleSha256
+# provenance hashes; vendor/spec/replayer-contract/v1/README.md documents a
+# worked example of the replayer lookup key (sha256 of path + body). Only
+# 64-char hex digests in exactly these two files are allowed.
+description = "vendor/spec provenance and example SHA-256 digests"
+condition = "AND"
+paths = [
+  '''vendor/spec/MANIFEST\.json''',
+  '''vendor/spec/replayer-contract/v1/README\.md''',
+]
+regexes = ['''\b[a-f0-9]{64}\b''']

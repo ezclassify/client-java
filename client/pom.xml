@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ezclassify.rest</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>client</artifactId>
+    <packaging>jar</packaging>
+
+    <name>EzClassify REST Client for Java</name>
+    <description>Context-bound client for the EzClassify REST API (Java 17+ HttpClient)</description>
+
+    <properties>
+        <automatic.module.name>com.ezclassify.rest.client</automatic.module.name>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ezclassify.rest</groupId>
+            <artifactId>contract</artifactId>
+        </dependency>
+
+        <!-- Minimal JSON for HTTP response parsing (single jar, no transitive dependencies) -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- RequestSchemaConformanceTest reads the request schemas out of the
+             vendored vendor/spec/openapi.yaml. Test scope only; the published
+             client keeps gson as its single runtime dependency. -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/..</directory>
+                <includes>
+                    <include>LICENSE</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- Generate the response shape table ResponseCheck walks: the members every
+                 success body must carry, read from the vendored OpenAPI required lists.
+                 Package-private and not a wire type, so it lives with the client that
+                 reads it. The types module installs the generator's pinned tooling. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-response-shapes</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>node</executable>
+                            <arguments>
+                                <argument>${project.basedir}/../types/scripts/gen.mjs</argument>
+                                <argument>--response-shapes</argument>
+                                <argument>${project.basedir}/../vendor/spec/openapi.yaml</argument>
+                                <argument>${project.build.directory}/generated-sources/java/com/ezclassify/rest/client</argument>
+                                <argument>com.ezclassify.rest.client</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

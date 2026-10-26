@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ezclassify.rest</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sdk-tour</artifactId>
+    <packaging>jar</packaging>
+
+    <name>EzClassify Java SDK Tour</name>
+    <description>Runnable example exercising the EzClassify REST API client from a JVM caller.</description>
+
+    <properties>
+        <!-- Internal example, never deployed. Belt-and-suspenders with the
+             central-publishing skip below: this also stops a plain
+             `mvn deploy` (no Central plugin) from shipping the jar anywhere. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- Never published, but the shared jar-plugin config stamps every
+             reactor jar; without this property the manifest would carry an
+             unresolved placeholder. -->
+        <automatic.module.name>com.ezclassify.demo</automatic.module.name>
+        <exec.mainClass>com.ezclassify.demo.ClientDemo</exec.mainClass>
+    </properties>
+
+    <dependencies>
+        <!-- Reactor sibling: provides EzClassifyClient for the HTTP-client demo. -->
+        <dependency>
+            <groupId>com.ezclassify.rest</groupId>
+            <artifactId>client</artifactId>
+        </dependency>
+        <!-- Smoke test that the demo runs every advertised section end to end. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- The parent wires this plugin for the whole reactor so the published
+                     artifacts reach Maven Central. The demo must never
+                     ride along in that staged bundle. -->
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <configuration>
+                    <skipPublishing>true</skipPublishing>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.ezclassify.demo.ClientDemo</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>${exec.mainClass}</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

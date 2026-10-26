@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ezclassify.rest</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>repo-policy</artifactId>
+    <packaging>jar</packaging>
+
+    <name>EzClassify Java SDK Repository Policy Gates</name>
+    <description>Tests that assert repository policy rather than published behavior. No main sources, never published.</description>
+
+    <properties>
+        <!-- Test sources only: nothing here is a published artifact. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.install.skip>true</maven.install.skip>
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <!-- The shared jar-plugin config stamps every reactor jar; without this
+             the manifest would carry an unresolved placeholder. -->
+        <automatic.module.name>com.ezclassify.buildsupport</automatic.module.name>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- VendorReadonlyWorkflowTest executes the vendor-readonly gate's real
+             shell against real git history, so it has to read the run bodies out
+             of the workflow YAML. A real parser, not a hand-rolled block-scalar
+             reader: mis-extracting would run the wrong text and the test would
+             go green having exercised nothing. -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- The parent wires this plugin for the whole reactor so the published
+                     artifacts reach Maven Central. Policy gates must
+                     never ride along in that staged bundle. -->
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <configuration>
+                    <skipPublishing>true</skipPublishing>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

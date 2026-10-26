@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, not nightly: push + PR runs are the primary gate; the schedule
+    # exists only so the spec-hash and generator steps below catch vendored-spec
+    # or generator drift between pushes.
+    - cron: '0 6 * * 6'   # Saturday 06:00 UTC; only fires on the repo's default branch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # CONTRIBUTING.md states that a pull request whose commits are not signed
+      # off cannot be merged. That sentence is only true if something checks it,
+      # so the range is checked here rather than left to the PR checklist.
+      - name: Commits carry a Developer Certificate of Origin sign-off
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --quiet origin "$BASE_SHA" "$HEAD_SHA"
+          bash scripts/check-signoff.sh "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # Provenance gate, part 1: the vendored OpenAPI contract must match the
+      # SHA-256 recorded in MANIFEST.json, so a hand-edit to the vendored spec
+      # cannot slip through without a deliberate manifest update.
+      - name: Verify spec hash
+        run: |
+          EXPECTED=$(python3 -c "import json; print(json.load(open('vendor/spec/MANIFEST.json'))['openapiSha256'])")
+          ACTUAL=$(sha256sum vendor/spec/openapi.yaml | awk '{print $1}')
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "ERROR: vendor/spec/openapi.yaml SHA mismatch"
+            echo "  MANIFEST: $EXPECTED"
+            echo "  actual:   $ACTUAL"
+            exit 1
+          fi
+
+      # Provenance gate, part 2: nothing generated is committed (the Maven
+      # build regenerates the types module from vendor/spec on every compile),
+      # so the property that matters is determinism. Two back-to-back runs of
+      # the generator over the hash-verified schemas must produce identical
+      # output; a generator that drifts between runs would make the build and
+      # the api-surface golden unreproducible.
+      - name: Generator output is deterministic
+        run: |
+          npm --prefix tools ci --no-audit --no-fund
+          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/a com.ezclassify.rest.contract vendor/spec/openapi.yaml
+          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/b com.ezclassify.rest.contract vendor/spec/openapi.yaml
+          diff -r types/target/regen-check/a types/target/regen-check/b
+
+      # The generator must write only under its output directory. A run that
+      # modifies any tracked file means the generator (or a template it reads)
+      # regressed into writing outside target/.
+      - name: Generator leaves the tracked tree untouched
+        run: git diff --exit-code
+
+      # Both the guard and the gate below are policy checks whose whole value is
+      # what they refuse, so their own tests run here rather than sitting in the
+      # tree unexecuted.
+      - name: Repository policy scripts behave as specified
+        run: node --test scripts/check-workflow-location-guards.test.mjs scripts/gen-notices.test.mjs scripts/check-signoff.test.mjs
+
+      - name: Workflow location guards follow repository policy
+        run: node scripts/check-workflow-location-guards.mjs
+
+      - name: Build and test (Maven multi-module)
+        run: ./mvnw verify --batch-mode --no-transfer-progress
+
+      - name: Generated and handwritten type ownership is singular
+        run: |
+          node scripts/check-architecture.mjs
+
+      # 1.0 public-surface freeze: diffs the javap dump of the compiled,
+      # published modules (types, client) against
+      # the committed golden api-surface.txt.
+      # Reviewed API changes regenerate the golden via 'make api-surface'.
+      - name: Public API surface is frozen at 1.0
+        run: make check-api-surface
+
+      # License gate over the production (compile + runtime) closure of every
+      # reactor module: each dependency must carry an allowlisted license, the
+      # generated section of THIRD-PARTY-NOTICES.md must match the current
+      # closure, and the curated sections must name that same set of components
+      # so neither half of the file can outlive what the build actually ships.
+      - name: Dependency license compliance and third-party notices
+        run: |
+          ./mvnw org.codehaus.mojo:license-maven-plugin:2.7.1:aggregate-add-third-party \
+            -Dlicense.excludedScopes=test,provided --batch-mode --no-transfer-progress -q
+          node scripts/gen-notices.mjs --check
+
+      # skipNotDeployed=false because the central-publishing-maven-plugin
+      # replaces the default maven-deploy-plugin, which the CycloneDX plugin
+      # misreads as "module never deploys" and would emit an empty BOM.
+      - name: Generate SBOM (CycloneDX)
+        run: >-
+          ./mvnw org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom
+          -DoutputFormat=json -Dcyclonedx.skipNotDeployed=false
+          --batch-mode --no-transfer-progress
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: target/bom.json
+
+      - name: Working tree is clean after build
+        run: git diff --exit-code && test -z "$(git status --porcelain)"

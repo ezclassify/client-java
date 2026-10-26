@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ezclassify.rest</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>contract</artifactId>
+    <packaging>jar</packaging>
+
+    <name>EzClassify REST Contract for Java</name>
+    <description>Typed request, response, and domain contract used by the EzClassify REST client</description>
+
+    <properties>
+        <automatic.module.name>com.ezclassify.rest.contract</automatic.module.name>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/..</directory>
+                <includes>
+                    <include>LICENSE</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- Step 1: run the schema-to-Java-record code generator before compilation.
+                 Reads JSON Schema files from vendor/spec/json-schemas/ (vendored alongside
+                 the conformance test fixtures) and emits Java record classes into
+                 target/generated-sources/java/. Run `make regen` to refresh the
+                 generated classes from the frozen vendored bundle.-->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>install-java-regen-tools</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>--prefix</argument>
+                                <argument>${project.basedir}/../tools</argument>
+                                <argument>ci</argument>
+                                <argument>--no-audit</argument>
+                                <argument>--no-fund</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-java-model</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>node</executable>
+                            <arguments>
+                                <argument>${project.basedir}/scripts/gen.mjs</argument>
+                                <argument>${project.basedir}/../vendor/spec/json-schemas</argument>
+                                <argument>${project.build.directory}/generated-sources/java/com/ezclassify/rest/contract</argument>
+                                <argument>com.ezclassify.rest.contract</argument>
+                                <argument>${project.basedir}/../vendor/spec/openapi.yaml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Step 2: register the generated source directory so javac picks it up. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

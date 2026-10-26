@@ -1,0 +1,15 @@
+{
+  "name": "@ezclassify/java-regen-tools",
+  "private": true,
+  "description": "Pinned build-time YAML parser for deterministic Java generation from vendor/spec.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "deps:refresh": "node -e \"require('node:fs').rmSync('package-lock.json',{force:true})\" && npm install --package-lock-only --include=optional --ignore-scripts"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  }
+}
