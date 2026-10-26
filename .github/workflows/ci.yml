@@ -64,25 +64,6 @@ jobs:
             exit 1
           fi
 
-      # Provenance gate, part 2: nothing generated is committed (the Maven
-      # build regenerates the types module from vendor/spec on every compile),
-      # so the property that matters is determinism. Two back-to-back runs of
-      # the generator over the hash-verified schemas must produce identical
-      # output; a generator that drifts between runs would make the build and
-      # the api-surface golden unreproducible.
-      - name: Generator output is deterministic
-        run: |
-          npm --prefix tools ci --no-audit --no-fund
-          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/a com.ezclassify.rest.contract vendor/spec/openapi.yaml
-          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/b com.ezclassify.rest.contract vendor/spec/openapi.yaml
-          diff -r types/target/regen-check/a types/target/regen-check/b
-
-      # The generator must write only under its output directory. A run that
-      # modifies any tracked file means the generator (or a template it reads)
-      # regressed into writing outside target/.
-      - name: Generator leaves the tracked tree untouched
-        run: git diff --exit-code
-
       # Both the guard and the gate below are policy checks whose whole value is
       # what they refuse, so their own tests run here rather than sitting in the
       # tree unexecuted.
@@ -94,6 +75,26 @@ jobs:
 
       - name: Build and test (Maven multi-module)
         run: ./mvnw verify --batch-mode --no-transfer-progress
+
+      # Maven's native initialize phase installed the frozen generator tools.
+      # Reuse that unchanged installation for the independent two-output proof.
+      # Provenance gate, part 2: nothing generated is committed (the Maven
+      # build regenerates the types module from vendor/spec on every compile),
+      # so the property that matters is determinism. Two back-to-back runs of
+      # the generator over the hash-verified schemas must produce identical
+      # output; a generator that drifts between runs would make the build and
+      # the api-surface golden unreproducible.
+      - name: Generator output is deterministic
+        run: |
+          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/a com.ezclassify.rest.contract vendor/spec/openapi.yaml
+          node types/scripts/gen.mjs vendor/spec/json-schemas types/target/regen-check/b com.ezclassify.rest.contract vendor/spec/openapi.yaml
+          diff -r types/target/regen-check/a types/target/regen-check/b
+
+      # The generator must write only under its output directory. A run that
+      # modifies any tracked file means the generator (or a template it reads)
+      # regressed into writing outside target/.
+      - name: Generator leaves the tracked tree untouched
+        run: git diff --exit-code
 
       - name: Generated and handwritten type ownership is singular
         run: |
