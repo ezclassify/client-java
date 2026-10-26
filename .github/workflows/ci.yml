@@ -127,11 +127,12 @@ jobs:
           -DoutputFormat=json -Dcyclonedx.skipNotDeployed=false
           --batch-mode --no-transfer-progress
 
+      - name: Working tree is clean after build
+        run: git diff --exit-code && test -z "$(git status --porcelain)"
+
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: target/bom.json
-
-      - name: Working tree is clean after build
-        run: git diff --exit-code && test -z "$(git status --porcelain)"
+          if-no-files-found: error
