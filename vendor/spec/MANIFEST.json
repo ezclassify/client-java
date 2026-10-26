@@ -1,0 +1,33 @@
+{
+  "openapiVersion": "1.0.0-dev.30",
+  "openapiSha256": "da547a662ab79fa3f79f7d1a53a0b6a2823b0cd001d15e3d5de2aa90a7da96ff",
+  "specBundleSha256": "e3985ce6280e242297f7ce6e672c832ae577b54eda756a8d06f3ab41c7594388",
+  "specDigest": "b95ad1771b48d795e6f4f1306ace28889a44b064df67eb239bc33f36ccc84031",
+  "contractsSha": "aee9ee11e5eb20388e4df534ba96b7aa281e1830",
+  "sourcePackages": {
+    "@ezclassify/openapi": "1.0.0-dev.30",
+    "@ezclassify/schemas": "1.0.0-dev.30",
+    "@ezclassify/conformance": "1.0.0-dev.30"
+  },
+  "generatedAt": "2026-10-26T04:17:59.067Z",
+  "generators": {
+    "java": {
+      "binary": "node",
+      "script": "types/scripts/gen.mjs",
+      "version": "node",
+      "sha256": "765f144d63f8cc4d087bdc21264dd88a5363b5dc1a4d5a96b0e39dc9c038c763",
+      "additionalInputs": [
+        {
+          "path": "tools/package.json",
+          "sha256": "19d5420e9377524a41f882c77850cde96f7fbb2069635966b04cd379c6d300ea"
+        },
+        {
+          "path": "tools/package-lock.json",
+          "sha256": "77977458c0aaa59d5a0419d4c5b59fc29cad9e478b6479ff9222d0109f288fab"
+        }
+      ],
+      "note": "sha256 is of types/scripts/gen.mjs; additionalInputs pins the build-time YAML parser and engine tooling resolved by the Maven generate-sources lifecycle"
+    }
+  },
+  "generatedPaths": []
+}
