@@ -444,6 +444,30 @@ class VendorReadonlyWorkflowTest {
     // ---------- The gate must still admit the sanctioned actor ----------
 
     @Test
+    void githubSquashIdentityRequiresExactBotAccount(@TempDir Path dir) throws Exception {
+      String canonical = "348097708+ezclassify-spec-bot[bot]@users.noreply.github.com";
+      String[][] identities = {
+        {BOT_NAME, canonical, "0"},
+        {BOT_NAME, "348097709+" + BOT_EMAIL, "1"},
+        {BOT_NAME, "348097708+other-bot[bot]@users.noreply.github.com", "1"},
+        {"Other Bot", canonical, "1"}
+      };
+      for (int i = 0; i < identities.length; i++) {
+        String[] identity = identities[i];
+        Path scenarioDir = Files.createDirectories(dir.resolve("squash-" + i));
+        Path repo =
+            repoWithVendorCommit(scenarioDir, identity[0], identity[1], SPEC_SUBJECT + " (#9)");
+        assertEquals(
+            Integer.parseInt(identity[2]),
+            runGate(repo, push(repo, sh(repo, "git", "rev-parse", "HEAD^"))));
+        if (i == 0) {
+          assertEquals(0, runGate(repo, pullRequest(repo, BOT_NAME)));
+          assertNotEquals(0, runGate(repo, pullRequest(repo, HUMAN_LOGIN)));
+        }
+      }
+    }
+
+    @Test
     void admitsAGenuineBotCommitOnPush(@TempDir Path dir) throws Exception {
       Path repo = repoWithVendorCommit(dir, BOT_NAME, BOT_EMAIL, SPEC_SUBJECT);
       assertEquals(
