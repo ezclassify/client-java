@@ -7,11 +7,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * In-test HTTP stub server for {@link EzClassifyClient} unit tests.
@@ -37,7 +39,8 @@ import java.util.concurrent.atomic.AtomicReference;
 final class ClientStubServer implements Closeable {
 
   /** Snapshot of the most recent HTTP request the stub received. */
-  record CapturedRequest(String method, String path, String query, String body) {}
+  record CapturedRequest(
+      String method, String path, String query, String body, Map<String, List<String>> headers) {}
 
   private final HttpServer server;
   private final java.util.concurrent.ExecutorService executor;
@@ -181,7 +184,11 @@ final class ClientStubServer implements Closeable {
             exchange.getRequestMethod(),
             path,
             exchange.getRequestURI().getRawQuery(),
-            new String(bodyBytes, StandardCharsets.UTF_8)));
+            new String(bodyBytes, StandardCharsets.UTF_8),
+            exchange.getRequestHeaders().entrySet().stream()
+                .collect(
+                    Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey, entry -> List.copyOf(entry.getValue())))));
 
     exchange.getResponseHeaders().set("Content-Type", "application/json");
     String resolved = resolvedVersionHeader.get();

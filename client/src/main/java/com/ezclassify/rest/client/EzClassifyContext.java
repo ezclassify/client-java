@@ -267,6 +267,7 @@ public final class EzClassifyContext {
    * Validate the context binding against the server and populate {@link #resolvedVersion()}. Reads
    * the Context description and holds it for {@link #describeContext()}.
    *
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    * @throws EzClassifyClientException if the server refuses the binding or cannot be reached
    * @throws MalformedResponseException if the description lacks a member the contract requires
    */
@@ -575,6 +576,10 @@ public final class EzClassifyContext {
    * too. Over-escaping is safe here: the server decodes the segment before matching.
    */
   static String segment(String s) {
+    // Refuse literal dot segments instead of relying on URI processors to preserve their spelling.
+    if (".".equals(s) || "..".equals(s)) {
+      throw new IllegalArgumentException("A Context path segment cannot be a literal dot segment");
+    }
     return URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
   }
 

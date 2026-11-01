@@ -57,7 +57,8 @@ public final class EzClassifyClient implements AutoCloseable {
    * Create a server-level client with independent caller and Context credentials.
    *
    * @param baseUrl REST API base URL
-   * @param credentials caller and Context credentials, or {@code null} for none
+   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
+   *     for none
    * @throws IllegalArgumentException when {@code baseUrl} is not an absolute http or https URL, or
    *     when credentials are supplied for a plaintext http endpoint that is not on loopback
    */
@@ -81,6 +82,7 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param baseUrl REST API base URL
    * @param contextId Context identifier
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
   public static EzClassifyContext connect(String baseUrl, String contextId) {
     return connect(baseUrl, contextId, null);
@@ -94,6 +96,7 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param version concrete Context version, {@code latest}, or {@code null} to let the server
    *     choose
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
   public static EzClassifyContext connect(String baseUrl, String contextId, String version) {
     return connect(baseUrl, contextId, version, RestClientCredentials.none());
@@ -106,8 +109,10 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param contextId Context identifier
    * @param version concrete Context version, {@code latest}, or {@code null} to let the server
    *     choose
-   * @param credentials caller and Context credentials, or {@code null} for none
+   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
+   *     for none
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
   public static EzClassifyContext connect(
       String baseUrl, String contextId, String version, RestClientCredentials credentials) {
@@ -121,9 +126,11 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param contextId Context identifier
    * @param version immutable Context version, {@code latest}, or {@code null} to let the server
    *     choose
-   * @param credentials caller and Context credentials, or {@code null} for none
+   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
+   *     for none
    * @param cacheOptions response reuse and access-audit choices
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    * @throws IllegalArgumentException if access-decision caching is requested without a concrete
    *     Context version
    */
@@ -151,6 +158,7 @@ public final class EzClassifyClient implements AutoCloseable {
    *
    * @param contextId Context identifier
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
   public EzClassifyContext context(String contextId) {
     return context(contextId, null);
@@ -163,6 +171,7 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param version concrete Context version, {@code latest}, or {@code null} to let the server
    *     choose
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
   public EzClassifyContext context(String contextId, String version) {
     return context(contextId, version, ContextCacheOptions.defaults());
@@ -176,6 +185,7 @@ public final class EzClassifyClient implements AutoCloseable {
    *     choose
    * @param cacheOptions response reuse and access-audit choices
    * @return the resolved Context client
+   * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    * @throws IllegalArgumentException if access-decision caching is requested without a concrete
    *     Context version
    */
@@ -201,6 +211,7 @@ public final class EzClassifyClient implements AutoCloseable {
    *
    * @param contextId Context identifier
    * @return published immutable versions
+   * @throws IllegalArgumentException when the Context id is blank or a literal dot segment
    */
   public List<String> listContextVersions(String contextId) {
     if (contextId == null || contextId.isBlank()) {
