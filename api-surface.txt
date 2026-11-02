@@ -292,10 +292,12 @@ public final class com.ezclassify.rest.client.RenderOptions$Builder {
 }
 public final class com.ezclassify.rest.client.RestClientCredentials extends java.lang.Record {
   public com.ezclassify.rest.client.RestClientCredentials(java.lang.String, java.lang.String);
+  public com.ezclassify.rest.client.RestClientCredentials(java.lang.String, java.lang.String, java.lang.String);
   public final boolean equals(java.lang.Object);
   public final int hashCode();
   public final java.lang.String toString();
   public java.lang.String accessToken();
+  public java.lang.String applicationCredential();
   public java.lang.String contextToken();
   public static com.ezclassify.rest.client.RestClientCredentials none();
 }

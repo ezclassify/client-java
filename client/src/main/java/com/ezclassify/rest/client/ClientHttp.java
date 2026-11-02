@@ -222,13 +222,13 @@ final class ClientHttp {
   }
 
   /**
-   * Fail on HTTP error statuses.
+   * Accept only successful HTTP statuses; redirects are not operation results.
    *
    * @param response the response to check
-   * @throws EzClassifyClientException if the status code is 400 or above
+   * @throws EzClassifyClientException if the status code is outside 200 through 299
    */
   static void requireSuccess(HttpResponse<String> response) {
-    if (response.statusCode() >= 400) {
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
       String code = null;
       String detail = null;
       String message = null;

@@ -16,7 +16,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Published thin-client modules only.
@@ -183,6 +183,14 @@ function check(current) {
   console.error('reviewed and is intentional, regenerate the golden and commit it:');
   console.error('  make api-surface');
   console.error(`Otherwise revert the public-surface change. Golden: ${GOLDEN}`);
+  // Preserve native javap bytes for an intentional reviewed golden update while
+  // retaining the failing gate for every unapproved surface change.
+  try {
+    mkdirSync('target', { recursive: true });
+    writeFileSync('target/api-surface.actual.txt', GOLDEN_HEADER + current);
+  } catch (error) {
+    console.error(`Could not preserve the native API proposal: ${error.message}`);
+  }
   process.exit(1);
 }
 

@@ -3,22 +3,58 @@ package com.ezclassify.rest.client;
 import java.net.http.HttpRequest;
 
 /**
- * Independent caller-identity and Context-authorization credentials for REST requests.
+ * Independent caller and Context tokens, or an opaque application credential for REST requests.
  *
  * @param accessToken bearer token identifying the caller, or {@code null} when authentication is
  *     disabled by the deployment
  * @param contextToken signed token authorizing Context operations, or {@code null} only when the
  *     deployment explicitly permits unauthenticated Context access
+ * @param applicationCredential opaque application credential, or {@code null}; supply alone, as
+ *     nonempty ASCII without controls or surrounding whitespace
  */
-public record RestClientCredentials(String accessToken, String contextToken) {
+public record RestClientCredentials(
+    String accessToken, String contextToken, String applicationCredential) {
+
+  private static final String MALFORMED_APPLICATION_CREDENTIAL =
+      "Application credential must be nonempty ASCII without controls or surrounding whitespace";
 
   /**
-   * Reject blank credentials, which would otherwise send malformed authorization headers.
+   * Create independent caller and Context credentials.
+   *
+   * @param accessToken bearer token identifying the caller, or {@code null}
+   * @param contextToken signed Context token, or {@code null}
+   * @throws IllegalArgumentException when a supplied token is blank
+   */
+  public RestClientCredentials(String accessToken, String contextToken) {
+    this(accessToken, contextToken, null);
+  }
+
+  /**
+   * Reject mixed or malformed credentials before any HTTP transport is used.
    *
    * @param accessToken bearer token identifying the caller, or {@code null}
    * @param contextToken signed Context authorization token, or {@code null}
+   * @param applicationCredential opaque application credential, or {@code null}
+   * @throws IllegalArgumentException when credentials are mixed or malformed
    */
   public RestClientCredentials {
+    if (applicationCredential != null) {
+      if (accessToken != null || contextToken != null) {
+        throw new IllegalArgumentException(
+            "Application credentials cannot be combined with caller or Context tokens");
+      }
+      if (applicationCredential.isEmpty()
+          || applicationCredential.charAt(0) == ' '
+          || applicationCredential.charAt(applicationCredential.length() - 1) == ' ') {
+        throw new IllegalArgumentException(MALFORMED_APPLICATION_CREDENTIAL);
+      }
+      for (int i = 0; i < applicationCredential.length(); i++) {
+        char character = applicationCredential.charAt(i);
+        if (character < 0x20 || character > 0x7e) {
+          throw new IllegalArgumentException(MALFORMED_APPLICATION_CREDENTIAL);
+        }
+      }
+    }
     if (accessToken != null && accessToken.isBlank()) {
       throw new IllegalArgumentException("accessToken must be null or non-blank");
     }
@@ -48,6 +84,8 @@ public record RestClientCredentials(String accessToken, String contextToken) {
         + present(accessToken)
         + ", contextToken="
         + present(contextToken)
+        + ", applicationCredential="
+        + present(applicationCredential)
         + "]";
   }
 
@@ -57,11 +95,11 @@ public record RestClientCredentials(String accessToken, String contextToken) {
 
   /** Whether any token will be put on the wire; drives the plaintext-transport check. */
   boolean present() {
-    return accessToken != null || contextToken != null;
+    return accessToken != null || contextToken != null || applicationCredential != null;
   }
 
   /**
-   * Apply caller identity and, for Context paths, the independent Context authorization.
+   * Apply ordinary caller and Context tokens, or the Context-only application credential.
    *
    * @param request request builder to receive authentication headers
    * @param contextPath whether this request addresses the Context route family
@@ -70,6 +108,9 @@ public record RestClientCredentials(String accessToken, String contextToken) {
     if (accessToken != null) request.header("Authorization", "Bearer " + accessToken);
     if (contextPath && contextToken != null) {
       request.header("x-ezclassify-context-token", contextToken);
+    }
+    if (contextPath && applicationCredential != null) {
+      request.header("X-EzClassify-Application-Grant", applicationCredential);
     }
   }
 }
