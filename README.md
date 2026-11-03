@@ -76,15 +76,16 @@ try (EzClassifyClient client = new EzClassifyClient("https://rest-api.example.co
 }
 ```
 
-For application access, supply the opaque credential by itself instead of caller and Context tokens:
+For application access, supply the opaque application credential instead of a Context token. If the application definition requires a verified user, also supply that caller's access token from your customer identity provider:
 
 ```java
 var applicationCredential = java.util.Objects.requireNonNull(
     System.getenv("EZC_APPLICATION_CREDENTIAL"), "Set EZC_APPLICATION_CREDENTIAL.");
-var credentials = new RestClientCredentials(null, null, applicationCredential);
+String userAccessToken = null; // Set from this caller when the published policy requires a verified user.
+var credentials = new RestClientCredentials(userAccessToken, null, applicationCredential);
 ```
 
-The SDK sends it unchanged as `X-EzClassify-Application-Grant` only on Context discovery, version, binding and operation routes; health omits it. It rejects mixed, blank or malformed application credentials, redacts credentials from diagnostics, and does not decode, renew or replay them. The JDK transport does not follow redirects. Use a separate client for each credential.
+The SDK sends the grant unchanged as `X-EzClassify-Application-Grant` only on Context discovery, version, binding and operation routes; health omits it. A supplied caller token travels independently as `Authorization: Bearer`. The SDK rejects an application grant combined with a Context token, or a blank or malformed credential. It redacts credentials from diagnostics and does not decode, renew or replay them. The JDK transport does not follow redirects. Keep one client and its caches per caller; your application owns user sign-in and token refresh.
 
 Use an `https://` endpoint anywhere the tokens leave the machine; a local development server on loopback may use `http://`. The client enforces this: supplying credentials for a plaintext `http://` endpoint on a non-loopback host is rejected at construction, as is a base URL that is not an absolute `http`/`https` URL.
 
