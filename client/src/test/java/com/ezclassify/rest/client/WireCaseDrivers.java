@@ -308,9 +308,11 @@ final class WireCaseDrivers {
           s.checkCoverage(strings(body, "children"), text(body, "parent"));
       case "access/check" ->
           body.has("assertions")
-              ? ctx.access().check(facts(body), body.get("userAttributes").toString())
+              ? ctx.access()
+                  .check(facts(body), body.get("userAttributes").toString(), context(body))
               : ctx.access()
-                  .checkByMarking(text(body, "marking"), body.get("userAttributes").toString());
+                  .checkByMarking(
+                      text(body, "marking"), body.get("userAttributes").toString(), context(body));
       case "access/describe-rule" -> ctx.access().describeRule(text(body, "ruleId"));
       case "access/describe-requirements" ->
           ctx.access().describeRequirements(text(body, "marking"));
@@ -341,7 +343,7 @@ final class WireCaseDrivers {
               .assessAccess(
                   text(body, "text"),
                   attributes(body),
-                  null,
+                  body.has("context") ? Json.toMap(body.getAsJsonObject("context")) : null,
                   null,
                   DocumentResponseProfile.fromWire(text(body, "responseProfile")));
       default -> throw new AssertionError("unowned public POST " + c.id());
@@ -369,7 +371,11 @@ final class WireCaseDrivers {
         List<Map.Entry<String, Object>> entries = new ArrayList<>(attributes(body).entrySet());
         java.util.Collections.reverse(entries);
         for (var entry : entries) reversed.put(entry.getKey(), entry.getValue());
-        return ctx.access().checkByMarking(text(body, "marking"), reversed);
+        return ctx.access()
+            .checkByMarking(
+                text(body, "marking"),
+                reversed,
+                body.has("context") ? Json.toMap(body.getAsJsonObject("context")) : null);
       }
       default -> throw new AssertionError("unsupported variant " + variant);
     }
@@ -398,6 +404,10 @@ final class WireCaseDrivers {
 
   private static String optional(JsonObject body, String name) {
     return body.has(name) ? text(body, name) : null;
+  }
+
+  private static String context(JsonObject body) {
+    return body.has("context") ? body.get("context").toString() : null;
   }
 
   private static List<String> strings(JsonObject body, String name) {
