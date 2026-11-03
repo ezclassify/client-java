@@ -3,14 +3,15 @@ package com.ezclassify.rest.client;
 import java.net.http.HttpRequest;
 
 /**
- * Independent caller and Context tokens, or an opaque application credential for REST requests.
+ * Independent caller authorization with either a Context token or an application credential.
  *
  * @param accessToken bearer token identifying the caller, or {@code null} when authentication is
- *     disabled by the deployment
- * @param contextToken signed token authorizing Context operations, or {@code null} only when the
- *     deployment explicitly permits unauthenticated Context access
- * @param applicationCredential opaque application credential, or {@code null}; supply alone, as
- *     nonempty ASCII without controls or surrounding whitespace
+ *     not required by the application policy
+ * @param contextToken signed token authorizing Context operations, or {@code null} when not
+ *     required by the Runtime's configured authorization policy
+ * @param applicationCredential opaque application credential, or {@code null}; may accompany the
+ *     caller token, but not a Context token; nonempty ASCII without controls or surrounding
+ *     whitespace
  */
 public record RestClientCredentials(
     String accessToken, String contextToken, String applicationCredential) {
@@ -30,18 +31,20 @@ public record RestClientCredentials(
   }
 
   /**
-   * Reject mixed or malformed credentials before any HTTP transport is used.
+   * Reject conflicting authorization or malformed credentials before any HTTP transport is used.
    *
    * @param accessToken bearer token identifying the caller, or {@code null}
    * @param contextToken signed Context authorization token, or {@code null}
-   * @param applicationCredential opaque application credential, or {@code null}
-   * @throws IllegalArgumentException when credentials are mixed or malformed
+   * @param applicationCredential opaque application credential, or {@code null}; may accompany
+   *     {@code accessToken}, but not {@code contextToken}
+   * @throws IllegalArgumentException when Context and application credentials conflict or a
+   *     credential is malformed
    */
   public RestClientCredentials {
     if (applicationCredential != null) {
-      if (accessToken != null || contextToken != null) {
+      if (contextToken != null) {
         throw new IllegalArgumentException(
-            "Application credentials cannot be combined with caller or Context tokens");
+            "Application credentials cannot be combined with Context tokens");
       }
       if (applicationCredential.isEmpty()
           || applicationCredential.charAt(0) == ' '
@@ -64,7 +67,7 @@ public record RestClientCredentials(
   }
 
   /**
-   * Return credentials for a REST deployment explicitly configured without authentication.
+   * Return credentials that add no request authentication headers.
    *
    * @return credentials that add no authentication headers
    */
@@ -99,7 +102,7 @@ public record RestClientCredentials(
   }
 
   /**
-   * Apply ordinary caller and Context tokens, or the Context-only application credential.
+   * Apply caller authorization and either a Context token or Context-only application credential.
    *
    * @param request request builder to receive authentication headers
    * @param contextPath whether this request addresses the Context route family

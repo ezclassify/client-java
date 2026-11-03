@@ -123,6 +123,18 @@ class WireCorpusControlsTest {
   }
 
   @Test
+  void rawRouteStillRequiresTheCredentialItsRecordingDeclares() throws Exception {
+    var c = WireCorpus.vendored().cases.get("route-miss.route-not-found");
+    assertEquals("context-token", c.credential());
+    var headers = headers();
+    assertThrows(
+        AssertionError.class,
+        () -> new WireCorpus.Replay(c).answer(c.method(), c.target(), new byte[0], headers));
+    headers.put("x-ezclassify-context-token", List.of("fixture-context-carrier"));
+    assertEquals(c, new WireCorpus.Replay(c).answer(c.method(), c.target(), new byte[0], headers));
+  }
+
+  @Test
   void staleOrMissingOwnerInputsAreNotSuccessfulCoverage() throws Exception {
     var old = new WireCorpus(Map.of("old-case", synthetic("none")));
     assertThrows(AssertionError.class, () -> old.requireIds(WireCaseDrivers.DRIVERS.keySet()));

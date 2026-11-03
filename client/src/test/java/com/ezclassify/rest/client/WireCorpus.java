@@ -161,9 +161,7 @@ final class WireCorpus {
       switch (expected.credential()) {
         case "context-token" -> {
           require(bearer == null, "unexpected bearer");
-          require(
-              contextPath ? "fixture-context-carrier".equals(carrier) : carrier == null,
-              "wrong carrier");
+          require("fixture-context-carrier".equals(carrier), "wrong carrier");
         }
         case "invalid-bearer" -> {
           require("Bearer fixture-refused-bearer".equals(bearer), "wrong bearer");

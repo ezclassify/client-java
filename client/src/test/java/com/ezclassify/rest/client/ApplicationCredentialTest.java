@@ -52,12 +52,50 @@ class ApplicationCredentialTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"true,false", "false,true", "true,true"})
-  void mixedCredentialsRefuse(boolean caller, boolean context) {
+  @ValueSource(booleans = {false, true})
+  void applicationAndContextCredentialsRefuse(boolean caller) {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new RestClientCredentials(caller ? "caller" : null, context ? "context" : null, GRANT));
+        () -> new RestClientCredentials(caller ? "caller" : null, "context", GRANT));
+  }
+
+  @Test
+  void callerBearerAndApplicationGrantRemainIndependentAcrossNativeClients() throws Exception {
+    var path = CONTEXT + "/scheme/normalize";
+    var body =
+        "{\"resolution\":{\"contextId\":\"sample\",\"resolvedVersion\":\"1.0.0\",\"artifacts\":[],\"sources\":[]},\"result\":{\"result\":\"TEXT\"},\"operationLimitations\":[]}";
+    try (var stub =
+            new ClientStubServer(
+                Map.of(
+                    CONTEXT,
+                    ClientStubServer.description(CONTEXT),
+                    path,
+                    body,
+                    "/v1/health",
+                    ClientStubServer.health("1.0.0", "abc")),
+                "1.0.0");
+        var first =
+            new EzClassifyClient(stub.url(), new RestClientCredentials("first-user", null, GRANT));
+        var second =
+            new EzClassifyClient(
+                stub.url(), new RestClientCredentials("second-user", null, GRANT))) {
+      var firstContext = first.context("sample", "1.0.0");
+      assertEquals("Bearer first-user", header(stub, "Authorization"));
+      firstContext.scheme().normalize("text");
+      assertEquals("Bearer first-user", header(stub, "Authorization"));
+      var secondContext = second.context("sample", "1.0.0");
+      assertEquals("Bearer second-user", header(stub, "Authorization"));
+      secondContext.scheme().normalize("text");
+      assertEquals("Bearer second-user", header(stub, "Authorization"));
+      assertEquals(GRANT, header(stub, HEADER));
+      assertNull(header(stub, "X-EzClassify-Context-Token"));
+      firstContext.scheme().normalize("text");
+      assertEquals(4, stub.requestCount());
+      first.ping();
+      assertEquals("Bearer first-user", header(stub, "Authorization"));
+      assertNull(header(stub, HEADER));
+      assertNull(header(stub, "X-EzClassify-Context-Token"));
+    }
   }
 
   @Test
@@ -156,12 +194,22 @@ class ApplicationCredentialTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"true,true", "true,false", "false,true", "false,false"})
-  void sameAndCrossOriginRedirectsAreNotFollowed(boolean factory, boolean sameOrigin)
+  @CsvSource({
+    "true,true,false",
+    "true,false,false",
+    "false,true,false",
+    "false,false,false",
+    "true,true,true",
+    "true,false,true",
+    "false,true,true",
+    "false,false,true"
+  })
+  void sameAndCrossOriginRedirectsAreNotFollowed(boolean factory, boolean sameOrigin, boolean user)
       throws Exception {
+    var credentials = new RestClientCredentials(user ? "caller" : null, null, GRANT);
     try (var target = new ClientStubServer(Map.of(CONTEXT, ClientStubServer.description(CONTEXT)));
         var source = new ClientStubServer(Map.of(CONTEXT, "{}", "/v1/ctx", "{}"));
-        var root = new EzClassifyClient(source.url(), application())) {
+        var root = new EzClassifyClient(source.url(), credentials)) {
       var path = factory ? CONTEXT : "/v1/ctx";
       source.setStatus(path, 302);
       source.setHeader(path, "Location", (sameOrigin ? source.url() : target.url()) + CONTEXT);
@@ -169,14 +217,15 @@ class ApplicationCredentialTest {
           assertThrows(
               EzClassifyClientException.class,
               () -> {
-                if (factory)
-                  EzClassifyClient.connect(source.url(), "sample", "1.0.0", application());
+                if (factory) EzClassifyClient.connect(source.url(), "sample", "1.0.0", credentials);
                 else root.listContexts();
               });
       assertEquals(302, failure.statusCode());
       assertEquals(1, source.requestCount());
       assertEquals(0, target.requestCount());
-      assertCredential(source);
+      assertEquals(GRANT, header(source, HEADER));
+      assertEquals(user ? "Bearer caller" : null, header(source, "Authorization"));
+      assertNull(header(source, "X-EzClassify-Context-Token"));
     }
   }
 

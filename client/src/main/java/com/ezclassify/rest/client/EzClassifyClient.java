@@ -57,8 +57,8 @@ public final class EzClassifyClient implements AutoCloseable {
    * Create a server-level client with independent caller and Context credentials.
    *
    * @param baseUrl REST API base URL
-   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
-   *     for none
+   * @param credentials a caller token with a Context token or an application credential; {@code
+   *     null} for none
    * @throws IllegalArgumentException when {@code baseUrl} is not an absolute http or https URL, or
    *     when credentials are supplied for a plaintext http endpoint that is not on loopback
    */
@@ -109,8 +109,8 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param contextId Context identifier
    * @param version concrete Context version, {@code latest}, or {@code null} to let the server
    *     choose
-   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
-   *     for none
+   * @param credentials a caller token with a Context token or an application credential; {@code
+   *     null} for none
    * @return the resolved Context client
    * @throws IllegalArgumentException when a Context id or version is a literal dot segment
    */
@@ -126,8 +126,8 @@ public final class EzClassifyClient implements AutoCloseable {
    * @param contextId Context identifier
    * @param version immutable Context version, {@code latest}, or {@code null} to let the server
    *     choose
-   * @param credentials caller and Context tokens, or an opaque application credential; {@code null}
-   *     for none
+   * @param credentials a caller token with a Context token or an application credential; {@code
+   *     null} for none
    * @param cacheOptions response reuse and access-audit choices
    * @return the resolved Context client
    * @throws IllegalArgumentException when a Context id or version is a literal dot segment

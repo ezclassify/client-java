@@ -105,7 +105,11 @@ class WireCorpusTest {
         });
     server.start();
     String base = "http://127.0.0.1:" + server.getAddress().getPort();
-    var observed = new ObservedHttpClient();
+    var observed =
+        new ObservedHttpClient(
+            c.id().equals("route-miss.route-not-found")
+                ? java.util.Map.of("x-ezclassify-context-token", "fixture-context-carrier")
+                : java.util.Map.of());
     try {
       Object value = null;
       Throwable thrown = null;
@@ -251,12 +255,30 @@ class WireCorpusTest {
 
   static final class ObservedHttpClient extends HttpClient {
     private final HttpClient delegate = HttpClient.newHttpClient();
+    private final java.util.Map<String, String> explicitHeaders;
     final List<HttpResponse<?>> responses = new ArrayList<>();
+
+    ObservedHttpClient() {
+      this(java.util.Map.of());
+    }
+
+    ObservedHttpClient(java.util.Map<String, String> explicitHeaders) {
+      this.explicitHeaders = java.util.Map.copyOf(explicitHeaders);
+    }
+
+    private HttpRequest configuredRequest(HttpRequest request) {
+      if (explicitHeaders.isEmpty()) return request;
+      // A caller-supplied transport configures the raw recording's header;
+      // the SDK's automatic credentials remain limited to Context routes.
+      var builder = HttpRequest.newBuilder(request, (name, value) -> true);
+      explicitHeaders.forEach(builder::header);
+      return builder.build();
+    }
 
     @Override
     public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler)
         throws IOException, InterruptedException {
-      var response = delegate.send(request, handler);
+      var response = delegate.send(configuredRequest(request), handler);
       responses.add(response);
       return response;
     }
@@ -265,7 +287,7 @@ class WireCorpusTest {
     public <T> CompletableFuture<HttpResponse<T>> sendAsync(
         HttpRequest request, HttpResponse.BodyHandler<T> handler) {
       return delegate
-          .sendAsync(request, handler)
+          .sendAsync(configuredRequest(request), handler)
           .thenApply(
               response -> {
                 responses.add(response);
@@ -279,7 +301,7 @@ class WireCorpusTest {
         HttpResponse.BodyHandler<T> handler,
         HttpResponse.PushPromiseHandler<T> push) {
       return delegate
-          .sendAsync(request, handler, push)
+          .sendAsync(configuredRequest(request), handler, push)
           .thenApply(
               response -> {
                 responses.add(response);
